@@ -1,9 +1,15 @@
-// 성적 확인 함수
+let lastGradeData = null;  // 마지막으로 가져온 성적 데이터 저장
+
 async function checkGrade() {
   console.log('성적 확인 시작');
   
   try {
-    const data = await chrome.storage.local.get(['username', 'password']);
+    const data = await chrome.storage.local.get([
+      'username', 
+      'password',
+      'notificationEnabled'
+    ]);
+    
     if (!data.username || !data.password) {
       console.log('저장된 계정 정보 없음');
       return;
@@ -39,74 +45,76 @@ async function checkGrade() {
     const pageText = await gradePageResponse.text();
     console.log('성적 페이지 로드 완료');
 
-    // 정규 표현식을 사용하여 HTML 파싱
-    const finishedSubjects = [];
-    
-    // 테이블 행을 찾는 정규식
+    // 정규 표현식 정의
     const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     const cellRegex = /<td[^>]*data-mb="([^"]+)"[^>]*>([\s\S]*?)<\/td>/gi;
-    
-    console.log('성적 상태 분석 시작');
-    
+
+    // 성적 데이터 파싱
+    const grades = [];
     let rowMatch;
+    
     while ((rowMatch = rowRegex.exec(pageText)) !== null) {
-      let subject = '';
-      let status = '';
-      let credit = '';
-      
-      // 현재 행의 내용에서 셀 찾기
-      const rowContent = rowMatch[1];
       const cellData = {};
-      
       let cellMatch;
+      const rowContent = rowMatch[1];
+      
       while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
         const dataType = cellMatch[1];
         const content = cellMatch[2].replace(/<[^>]+>/g, '').trim();
         cellData[dataType] = content;
       }
       
-      if (cellData['마감여부'] === '마감') {
-        finishedSubjects.push({
-          name: cellData['교과목'],
-          credit: cellData['학점']
-        });
+      if (cellData['교과목']) {
+        grades.push(cellData);
       }
     }
 
-    // 마감된 과목이 있으면 알림 생성
-    if (finishedSubjects.length > 0) {
-      const message = finishedSubjects.map(subject => 
-        `${subject.name} (${subject.credit}학점)`
-      ).join('\n');
+    // 마지막 성적 데이터 저장
+    lastGradeData = grades;
 
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icon.png',
-        title: '현재 마감된 과목 현황',
-        message: message,
-        priority: 1
-      });
-    } else {
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icon.png',
-        title: '마감된 과목 없음',
-        message: '현재 마감된 과목이 없습니다.',
-        priority: 1
-      });
+    // 마감된 과목 체크
+    const finishedSubjects = grades.filter(grade => grade['마감여부'] === '마감');
+    
+    // 알림이 활성화된 경우에만 알림 생성
+    if (data.notificationEnabled) {
+      if (finishedSubjects.length > 0) {
+        const message = finishedSubjects.map(subject => 
+          `${subject['교과목']}: ${subject['등급'] || '-'}`
+        ).join('\n');
+
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: 'icon.png',
+          title: '현재 마감된 과목 현황',
+          message: message,
+          priority: 1
+        });
+      } else {
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: 'icon.png',
+          title: '마감된 과목 없음',
+          message: '현재 마감된 과목이 없습니다.',
+          priority: 1
+        });
+      }
     }
 
     console.log('성적 확인 완료');
 
   } catch (error) {
     console.error('Error:', error);
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icon.png',
-      title: '오류 발생',
-      message: '성적 확인 중 오류가 발생했습니다.',
-      priority: 2
-    });
+    // 알림이 활성화된 경우에만 에러 알림 생성
+    const data = await chrome.storage.local.get(['notificationEnabled']);
+    if (data.notificationEnabled) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon.png',
+        title: '오류 발생',
+        message: '성적 확인 중 오류가 발생했습니다.',
+        priority: 2
+      });
+    }
   }
 }
 
@@ -118,11 +126,40 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-// 메시지 리스너 (즉시 체크용)
+// 메시지 리스너
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Message received:', message); // 디버깅을 위한 로그
+
   if (message.action === "checkNow") {
-    console.log('즉시 체크 요청 수신');
-    checkGrade();
+    checkGrade()
+      .then(() => {
+        console.log('Check completed, sending response');
+        sendResponse({success: true});
+      })
+      .catch(error => {
+        console.error('Check failed:', error);
+        sendResponse({success: false, error: error.message});
+      });
+    return true;
+  }
+  
+  if (message.action === "getGrades") {
+    console.log('Sending grades:', lastGradeData); // 디버깅을 위한 로그
+    if (lastGradeData && lastGradeData.length > 0) {
+      sendResponse({grades: lastGradeData});
+    } else {
+      // lastGradeData가 없으면 즉시 체크를 실행
+      checkGrade()
+        .then(() => {
+          console.log('Grades after check:', lastGradeData);
+          sendResponse({grades: lastGradeData || []});
+        })
+        .catch(error => {
+          console.error('Error checking grades:', error);
+          sendResponse({grades: []});
+        });
+    }
+    return true;
   }
 });
 
