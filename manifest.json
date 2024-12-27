@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "경희대 성적 확인 알리미",
+  "version": "1.0",
+  "description": "경희대학교 포털에서 성적 마감 여부를 확인하고 알림을 보내는 확장프로그램",
+  "permissions": [
+    "alarms",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://info21.khu.ac.kr/*",
+    "https://portal.khu.ac.kr/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}

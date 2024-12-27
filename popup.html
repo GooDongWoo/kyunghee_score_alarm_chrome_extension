@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+    }
+    .input-group {
+      margin-bottom: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 5px;
+      margin: 5px 0;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #status {
+      margin-top: 10px;
+      padding: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h3>경희대 성적 확인 알리미</h3>
+  
+  <div class="input-group">
+    <input type="text" id="username" placeholder="아이디">
+  </div>
+  
+  <div class="input-group">
+    <input type="password" id="password" placeholder="비밀번호">
+  </div>
+  
+  <button id="saveButton">저장</button>
+  <button id="checkInfoButton">저장된 정보 확인</button>
+  <div id="status"></div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
