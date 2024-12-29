@@ -1,5 +1,4 @@
-let lastGradeData = null;  // 마지막으로 가져온 성적 데이터 저장
-
+// 성적 확인 함수
 async function checkGrade() {
   console.log('성적 확인 시작');
   
@@ -7,12 +6,20 @@ async function checkGrade() {
     const data = await chrome.storage.local.get([
       'username', 
       'password',
-      'notificationEnabled'
+      'notificationEnabled',
+      'lastGradeData',  // 저장된 성적 데이터
+      'lastCheckTime'   // 마지막 확인 시간
     ]);
     
     if (!data.username || !data.password) {
       console.log('저장된 계정 정보 없음');
       return;
+    }
+
+    // SSO 로그인 및 성적 확인 전에 기존 데이터 반환
+    if (data.lastGradeData) {
+      console.log('캐시된 성적 데이터 반환');
+      return data.lastGradeData;
     }
 
     // 1. SSO 로그인
@@ -69,43 +76,46 @@ async function checkGrade() {
       }
     }
 
-    // 마지막 성적 데이터 저장
-    lastGradeData = grades;
+    // 새로운 성적 데이터를 이전 데이터와 비교
+    const hasChanges = JSON.stringify(grades) !== JSON.stringify(data.lastGradeData);
 
-    // 마감된 과목 체크
-    const finishedSubjects = grades.filter(grade => grade['마감여부'] === '마감');
-    
-    // 알림이 활성화된 경우에만 알림 생성
-    if (data.notificationEnabled) {
-      if (finishedSubjects.length > 0) {
-        const message = finishedSubjects.map(subject => 
-          `${subject['교과목']}: ${subject['등급'] || '-'}`
-        ).join('\n');
+    if (hasChanges) {
+      // 변경사항이 있을 경우에만 저장 및 알림
+      await chrome.storage.local.set({
+        lastGradeData: grades,
+        lastCheckTime: new Date().getTime()
+      });
 
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: 'icon.png',
-          title: '현재 마감된 과목 현황',
-          message: message,
-          priority: 1
+      if (data.notificationEnabled) {
+        // 변경된 과목에 대해서만 알림 생성
+        const newFinishedSubjects = grades.filter(newGrade => {
+          const oldGrade = data.lastGradeData?.find(g => g['교과목'] === newGrade['교과목']);
+          return newGrade['마감여부'] === '마감' && 
+                 (!oldGrade || oldGrade['마감여부'] !== '마감');
         });
-      } else {
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: 'icon.png',
-          title: '마감된 과목 없음',
-          message: '현재 마감된 과목이 없습니다.',
-          priority: 1
-        });
+
+        if (newFinishedSubjects.length > 0) {
+          const message = newFinishedSubjects.map(subject => 
+            `${subject['교과목']}: ${subject['등급'] || '-'}`
+          ).join('\n');
+
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon.png',
+            title: '새로운 마감 과목 알림',
+            message: message,
+            priority: 1
+          });
+        }
       }
     }
 
-    console.log('성적 확인 완료');
+    return grades;
 
   } catch (error) {
     console.error('Error:', error);
-    // 알림이 활성화된 경우에만 에러 알림 생성
-    const data = await chrome.storage.local.get(['notificationEnabled']);
+    // 에러 발생 시 캐시된 데이터 반환
+    const data = await chrome.storage.local.get(['lastGradeData', 'notificationEnabled']);
     if (data.notificationEnabled) {
       chrome.notifications.create({
         type: 'basic',
@@ -115,6 +125,7 @@ async function checkGrade() {
         priority: 2
       });
     }
+    return data.lastGradeData || [];
   }
 }
 
@@ -128,13 +139,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 // 메시지 리스너
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Message received:', message); // 디버깅을 위한 로그
+  console.log('Message received:', message);
 
   if (message.action === "checkNow") {
     checkGrade()
-      .then(() => {
+      .then((grades) => {
         console.log('Check completed, sending response');
-        sendResponse({success: true});
+        sendResponse({success: true, grades: grades});
       })
       .catch(error => {
         console.error('Check failed:', error);
@@ -144,21 +155,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   
   if (message.action === "getGrades") {
-    console.log('Sending grades:', lastGradeData); // 디버깅을 위한 로그
-    if (lastGradeData && lastGradeData.length > 0) {
-      sendResponse({grades: lastGradeData});
-    } else {
-      // lastGradeData가 없으면 즉시 체크를 실행
-      checkGrade()
-        .then(() => {
-          console.log('Grades after check:', lastGradeData);
-          sendResponse({grades: lastGradeData || []});
-        })
-        .catch(error => {
-          console.error('Error checking grades:', error);
-          sendResponse({grades: []});
-        });
-    }
+    chrome.storage.local.get(['lastGradeData'], (data) => {
+      console.log('Sending grades:', data.lastGradeData);
+      sendResponse({grades: data.lastGradeData || []});
+    });
     return true;
   }
 });
