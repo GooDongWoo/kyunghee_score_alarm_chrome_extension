@@ -4,6 +4,42 @@ function showStatus(message, isError = false) {
   status.textContent = message;
   status.style.display = 'block';
   status.style.backgroundColor = isError ? '#ffebee' : '#e8f5e9';
+  status.className = isError ? 'error' : '';
+}
+
+// 로그인 상태 업데이트 함수
+function updateLoginStatus(isLoggedIn) {
+  const loginStatus = document.getElementById('loginStatus');
+  const loginForm = document.getElementById('loginForm');
+  const toggleButton = document.getElementById('toggleLoginForm');
+  
+  loginStatus.className = `login-status ${isLoggedIn ? 'saved' : 'not-saved'}`;
+  loginStatus.textContent = isLoggedIn ? 
+    '로그인 정보가 저장되어 있습니다' : 
+    '로그인 정보가 저장되어 있지 않습니다';
+
+  // 로그인 정보가 없으면 폼을 자동으로 보여줌
+  if (!isLoggedIn) {
+    loginForm.classList.remove('hidden');
+    toggleButton.textContent = '로그인 폼 닫기';
+  }
+}
+
+// 로그인 폼 토글 함수
+function toggleLoginForm() {
+  const loginForm = document.getElementById('loginForm');
+  const toggleButton = document.getElementById('toggleLoginForm');
+  
+  if (loginForm.classList.contains('hidden')) {
+    loginForm.classList.remove('hidden');
+    toggleButton.textContent = '로그인 폼 닫기';
+  } else {
+    loginForm.classList.add('hidden');
+    toggleButton.textContent = '로그인 정보 수정';
+    // 폼을 닫을 때 입력 필드 초기화
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+  }
 }
 
 // 테이블 업데이트 함수
@@ -62,7 +98,7 @@ async function updateGradeTable() {
 
     // 새로운 데이터 요청
     const response = await chrome.runtime.sendMessage({action: "checkNow"});
-    if (response && response.grades) {
+    if (response && response.success && response.grades) {
       updateTable(response.grades);
       showStatus('성적 정보가 업데이트되었습니다.');
     } else {
@@ -90,11 +126,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       'notificationEnabled'
     ]);
 
-    // 저장된 계정 정보 설정
-    if (data.username) {
-      document.getElementById('username').value = data.username;
-      document.getElementById('password').value = data.password;
-    }
+    // 로그인 상태 업데이트
+    updateLoginStatus(!!data.username);
 
     // 저장된 확인 주기 설정
     if (data.checkInterval) {
@@ -115,6 +148,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     showStatus('데이터 로딩 중 오류가 발생했습니다.', true);
   }
 });
+
+// 로그인 폼 토글 버튼 이벤트 리스너
+document.getElementById('toggleLoginForm').addEventListener('click', toggleLoginForm);
 
 // 저장 버튼 클릭 이벤트
 document.getElementById('saveButton').addEventListener('click', async () => {
@@ -145,11 +181,33 @@ document.getElementById('saveButton').addEventListener('click', async () => {
 
     showStatus('설정이 저장되었습니다.');
     
+    // 로그인 상태 업데이트
+    updateLoginStatus(true);
+    
+    // 로그인 폼 숨기기
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('toggleLoginForm').textContent = '로그인 정보 수정';
+    
+    // 입력 필드 초기화
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    
     // 즉시 체크 실행 및 테이블 업데이트
     await updateGradeTable();
   } catch (error) {
     console.error('Error saving data:', error);
     showStatus('저장 중 오류가 발생했습니다.', true);
+  }
+});
+
+// 새로고침 버튼 클릭 이벤트
+document.getElementById('refreshButton').addEventListener('click', async () => {
+  try {
+    // 캐시 무시하고 새로운 데이터 요청
+    await chrome.storage.local.remove(['lastGradeData', 'lastCheckTime']);
+    await updateGradeTable();
+  } catch (error) {
+    showStatus('성적 정보 업데이트 중 오류가 발생했습니다.', true);
   }
 });
 
@@ -179,17 +237,6 @@ document.getElementById('checkInfoButton').addEventListener('click', async () =>
   } catch (error) {
     console.error('Error checking saved data:', error);
     showStatus('정보 확인 중 오류가 발생했습니다.', true);
-  }
-});
-
-// 새로고침 버튼 클릭 이벤트
-document.getElementById('refreshButton').addEventListener('click', async () => {
-  try {
-    // 캐시 무시하고 새로운 데이터 요청
-    await chrome.storage.local.remove(['lastGradeData', 'lastCheckTime']);
-    await updateGradeTable();
-  } catch (error) {
-    showStatus('성적 정보 업데이트 중 오류가 발생했습니다.', true);
   }
 });
 
