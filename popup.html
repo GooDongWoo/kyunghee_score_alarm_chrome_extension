@@ -25,7 +25,6 @@
       color: #333;
     }
     button {
-      width: 100%;
       padding: 8px;
       margin: 5px 0;
       background-color: #4CAF50;
@@ -46,7 +45,7 @@
     }
     .grade-table {
       width: 100%;
-      margin-top: 20px;
+      margin-bottom: 20px;
       border-collapse: collapse;
       background-color: white;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -76,30 +75,34 @@
     }
     .refresh-button {
       background-color: #2196F3;
-      padding: 8px 15px;
-      margin-top: 10px;
-      width: auto;
+      width: 100%;
+      margin-bottom: 20px;
     }
     .settings-section {
-      margin-bottom: 20px;
       padding: 15px;
       background-color: #f8f9fa;
       border-radius: 4px;
     }
     h3 {
       margin-top: 0;
+      margin-bottom: 15px;
       color: #2c3e50;
+      text-align: center;
     }
     .button-group {
       display: flex;
       gap: 10px;
-      margin-bottom: 15px;
+      margin-top: 15px;
+    }
+    .button-group button {
+      flex: 1;
     }
     .checkbox-label {
       display: flex;
       align-items: center;
       gap: 8px;
       cursor: pointer;
+      margin: 15px 0;
     }
     .checkbox-label input[type="checkbox"] {
       width: auto;
@@ -108,36 +111,7 @@
   </style>
 </head>
 <body>
-  <div class="settings-section">
-    <h3>경희대 성적 확인 알리미</h3>
-    
-    <div class="input-group">
-      <label>아이디</label>
-      <input type="text" id="username" placeholder="INFO 아이디">
-    </div>
-    
-    <div class="input-group">
-      <label>비밀번호</label>
-      <input type="password" id="password" placeholder="INFO 비밀번호">
-    </div>
-
-    <div class="input-group">
-      <label>확인 주기</label>
-      <select id="checkInterval">
-        <option value="5">5분</option>
-        <option value="10">10분</option>
-        <option value="15">15분</option>
-        <option value="30" selected>30분</option>
-        <option value="60">1시간</option>
-      </select>
-    </div>
-    
-    <div class="button-group">
-      <button id="saveButton">저장</button>
-      <button id="checkInfoButton">저장된 정보 확인</button>
-    </div>
-    <div id="status"></div>
-  </div>
+  <h3>경희대 성적 확인 알리미</h3>
 
   <button id="refreshButton" class="refresh-button">성적 현황 새로고침</button>
   
@@ -158,12 +132,42 @@
       <!-- 성적 데이터가 여기에 동적으로 추가됩니다 -->
     </tbody>
   </table>
-  <div class="input-group">
-    <label class="checkbox-label">
+
+  <div class="settings-section">
+    <div class="input-group">
+      <label>아이디</label>
+      <input type="text" id="username" placeholder="INFO 아이디">
+    </div>
+    
+    <div class="input-group">
+      <label>비밀번호</label>
+      <input type="password" id="password" placeholder="INFO 비밀번호">
+    </div>
+
+    <div class="input-group">
+      <label>확인 주기</label>
+      <select id="checkInterval">
+        <option value="5">5분</option>
+        <option value="10">10분</option>
+        <option value="15">15분</option>
+        <option value="30" selected>30분</option>
+        <option value="60">1시간</option>
+      </select>
+    </div>
+
+    <div class="checkbox-label">
       <input type="checkbox" id="notificationEnabled" checked>
       알림 기능 활성화
-    </label>
+    </div>
+    
+    <div class="button-group">
+      <button id="saveButton">저장</button>
+      <button id="checkInfoButton">저장된 정보 확인</button>
+    </div>
+    
+    <div id="status"></div>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
