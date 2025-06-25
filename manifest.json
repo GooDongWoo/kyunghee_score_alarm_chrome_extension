@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "경희대 성적 확인 알리미",
-  "version": "1.0",
-  "description": "경희대학교 포털에서 성적 마감 여부를 확인하고 알림을 보내는 확장프로그램",
+  "version": "3.0",
+  "description": "경희대학교 포털에서 성적 마감 여부를 실시간으로 확인하고 알림을 보내는 향상된 확장프로그램",
   "permissions": [
     "alarms",
     "notifications",
@@ -17,10 +17,23 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icon.png"
+    "default_title": "경희대 성적 확인 알리미",
+    "default_icon": {
+      "16": "icon.png",
+      "32": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
   },
   "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
     "48": "icon.png",
     "128": "icon.png"
-  }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "minimum_chrome_version": "88",
+  "homepage_url": "https://github.com/GooDongWoo/khu-grade-checker"
 }
